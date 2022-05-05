@@ -68,7 +68,7 @@ task Gender {
     }
 
     command <<<
-        samtools view ~{bam} chrY:2654896-2655723 | wc -l > ~{sample}.SRY.counts.txt
+        samtools view ~{bam} Y:2654896-2655723 | wc -l > ~{sample}.SRY.counts.txt
     >>>
 
     output {
