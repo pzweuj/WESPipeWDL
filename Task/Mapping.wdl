@@ -13,14 +13,14 @@ task Bwa {
         Int threads
     }
 
-    File reference = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa"
-    File ref_dict = "/home/novelbio/databases/hs37d5/hs37d5.chr.dict"
-    File ref_amb = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa.amb"
-    File ref_ann = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa.ann"
-    File ref_bwt = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa.bwt"
-    File ref_fai = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa.fai"
-    File ref_pac = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa.pac"
-    File ref_sa = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa.sa"
+    File reference = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta"
+    File ref_dict = "/home/novelbio/databases/b37/human_g1k_v37_decoy.dict"
+    File ref_amb = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.amb"
+    File ref_ann = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.ann"
+    File ref_bwt = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.bwt"
+    File ref_fai = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.fai"
+    File ref_pac = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.pac"
+    File ref_sa = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.sa"
     Int memory = ceil(threads * 4)
 
     command <<<
@@ -87,15 +87,15 @@ task BQSR {
         File bai
     }
 
-    File reference = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa"
-    File ref_fai = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa.fai"
-    File ref_dict = "/home/novelbio/databases/hs37d5/hs37d5.chr.dict"
-    File millsIndel = "/home/novelbio/databases/hs37d5/gatk_bundle/Mills_and_1000G_gold_standard.indels.hs37d5.vcf.gz"
-    File millsIndelIdx = "/home/novelbio/databases/hs37d5/gatk_bundle/Mills_and_1000G_gold_standard.indels.hs37d5.vcf.gz.tbi"
-    File genome1k = "/home/novelbio/databases/hs37d5/gatk_bundle/1000G_phase1.indels.hs37d5.vcf.gz"
-    File genome1kIdx = "/home/novelbio/databases/hs37d5/gatk_bundle/1000G_phase1.indels.hs37d5.vcf.gz.tbi"
-    File dbsnp = "/home/novelbio/databases/hs37d5/gatk_bundle/dbsnp_138.hs37d5.vcf.gz"
-    File dbsnpIdx = "/home/novelbio/databases/hs37d5/gatk_bundle/dbsnp_138.hs37d5.vcf.gz.tbi"
+    File reference = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta"
+    File ref_fai = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.fai"
+    File ref_dict = "/home/novelbio/databases/b37/human_g1k_v37_decoy.dict"
+    File millsIndel = "/home/novelbio/databases/b37/gatk_bundle/Mills_and_1000G_gold_standard.indels.b37.vcf.gz"
+    File millsIndelIdx = "/home/novelbio/databases/b37/gatk_bundle/Mills_and_1000G_gold_standard.indels.b37.vcf.gz.tbi"
+    File genome1k = "/home/novelbio/databases/b37/gatk_bundle/1000G_phase1.indels.b37.vcf.gz"
+    File genome1kIdx = "/home/novelbio/databases/b37/gatk_bundle/1000G_phase1.indels.b37.vcf.gz.tbi"
+    File dbsnp = "/home/novelbio/databases/b37/gatk_bundle/dbsnp_138.b37.vcf.gz"
+    File dbsnpIdx = "/home/novelbio/databases/b37/gatk_bundle/dbsnp_138.b37.vcf.gz.tbi"
 
     command <<<
         gatk BaseRecalibrator \
