@@ -9,35 +9,35 @@ version 1.0
 # Mutect2 MT
 # 用于线粒体
 # https://github.com/broadinstitute/gatk
-task Mutect2 {
+task Mutect2MT {
     input {
+        String sample
         File bam
         File bai
-        String sample
         Int threads
     }
 
-    File reference = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa"
-    File ref_dict = "/home/novelbio/databases/hs37d5/hs37d5.chr.dict"
-    File ref_fai = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa.fai"
+    File reference = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta"
+    File ref_dict = "/home/novelbio/databases/b37/human_g1k_v37_decoy.dict"
+    File ref_fai = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.fai"
 
     command <<<
         gatk Mutect2 \
             -R ~{reference} \
             -I ~{bam} \
-            -O ~{sample}.chrM.vcf \
+            -O ~{sample}.MT.vcf \
             --native-pair-hmm-threads ~{threads} \
-            -L chrM \
-            -A Coverage -A GenotypeSummaries \
+            -L MT \
             -mbq 15 --force-active true \
             --max-reads-per-alignment-start 0 \
-            --mitochondria-mode
+            --mitochondria-mode true \
+            --callable-depth 20
     >>>
 
     output {
-        File vcf = "~{sample}.chrM.vcf"
-        File vcfIdx = "~{sample}.chrM.vcf.idx"
-        File vcfStats = "~{sample}.chrM.vcf.stats"
+        File vcf = "~{sample}.MT.vcf"
+        File vcfIdx = "~{sample}.MT.vcf.idx"
+        File vcfStats = "~{sample}.MT.vcf.stats"
     }
 
     runtime {
@@ -47,7 +47,7 @@ task Mutect2 {
 }
 
 # FilterMutect2
-task FilterMutect2 {
+task FilterMutect2MT {
     input {
         String sample
         File vcf
@@ -55,20 +55,28 @@ task FilterMutect2 {
         File vcfStats
     }
 
-    File reference = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa"
-    File ref_dict = "/home/novelbio/databases/hs37d5/hs37d5.chr.dict"
-    File ref_fai = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa.fai"
+    File reference = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta"
+    File ref_dict = "/home/novelbio/databases/b37/human_g1k_v37_decoy.dict"
+    File ref_fai = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.fai"
 
     command <<<
         gatk FilterMutectCalls \
-            -O ~{sample}.mutect2.multiAelle.filter.vcf \
+            -O ~{sample}.MT.filter.vcf \
             -R ~{reference} \
             -V ~{vcf} \
             --mitochondria-mode true
+        gatk VariantFiltration \
+            -filter "DP < 20" --filter-name "DP20" \
+            -V ~{sample}.MT.filter.vcf \
+            -O ~{sample}.MT.filterDP.vcf
+        gatk SelectVariants \
+            -V ~{sample}.MT.filterDP.vcf \
+            -O ~{sample}.MT.filtered.vcf \
+            --exclude-filtered true
     >>>
 
     output {
-        File filterVcf = "~{sample}.mutect2.filter.vcf"
+        File filterVcf = "~{sample}.MT.filtered.vcf"
     }
 
     runtime {
@@ -86,20 +94,20 @@ task LeftAlignMutect2 {
         File vcf
     }
 
-    File reference = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa"
-    File ref_dict = "/home/novelbio/databases/hs37d5/hs37d5.chr.dict"
-    File ref_fai = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa.fai"
+    File reference = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta"
+    File ref_dict = "/home/novelbio/databases/b37/human_g1k_v37_decoy.dict"
+    File ref_fai = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.fai"
 
     command <<<
         gatk LeftAlignAndTrimVariants \
             -R ~{reference} \
             -V ~{vcf} \
-            -O ~{sample}.leftAlign.vcf \
+            -O ~{sample}.HC.leftAlign.vcf \
             --split-multi-allelics --keep-original-ac -no-trim
     >>>
 
     output {
-        File leftVcf = "~{sample}.leftAlign.vcf"
+        File leftVcf = "~{sample}.HC.leftAlign.vcf"
     }
 
     runtime {
@@ -130,6 +138,25 @@ task LeftAlignBcftools {
 
 }
 
+# 非GATK的gvcf到vcf
+# task GVcf2Vcf {
+#     input {
+#         String sample
+#         File gvcf
+#     }
+
+#     command <<<
+#         gzip -dc ~{gvcf} | extract_variants \
+#             | bgzip -c > ~{sample}.vcf.gz
+#     >>>
+
+#     output {
+#         File vcf = "~{sample}.vcf.gz"
+#     }
+
+# }
+
+
 
 ######################## freebayes pipe ###########################
 # freebayes
@@ -142,8 +169,8 @@ task Freebayes {
         File bed
     }
 
-    File reference = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa"
-    File ref_fai = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa.fai"
+    File reference = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta"
+    File ref_fai = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.fai"
 
     command <<<
         freebayes -f ~{reference} \
@@ -174,8 +201,8 @@ task FreebayesTwo {
         File bed
     }
 
-    File reference = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa"
-    File ref_fai = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa.fai"
+    File reference = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta"
+    File ref_fai = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.fai"
 
     command <<<
         freebayes -f ~{reference} \
@@ -208,8 +235,8 @@ task FreebayesThree {
         File bed
     }
 
-    File reference = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa"
-    File ref_fai = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa.fai"
+    File reference = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta"
+    File ref_fai = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.fai"
 
     command <<<
         freebayes -f ~{reference} \
@@ -244,8 +271,8 @@ task FreebayesFour {
         File bed
     }
 
-    File reference = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa"
-    File ref_fai = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa.fai"
+    File reference = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta"
+    File ref_fai = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.fai"
 
     command <<<
         freebayes -f ~{reference} \
@@ -275,12 +302,30 @@ task FilterFreebayes {
     }
 
     command <<<
-        bcftools view -e "FORMAT/DP<~{minDP} || FORMAT/AF<~{minAF}" \
-            ~{vcf} > ~{sample}.filtered.vcf
+        bcftools view -e "FORMAT/DP<~{minDP} || INFO/AF<~{minAF}" \
+            ~{vcf} > ~{sample}.freebayes.filtered.vcf
     >>>
 
     output {
-        File filterVcf = "~{sample}.filtered.vcf"
+        File filterVcf = "~{sample}.freebayes.filtered.vcf"
+    }
+
+}
+
+# Freebayes作为HC的补充，分析HC中未发现的突变
+task FreeSubtractHC {
+    input {
+        String sample
+        File vcfFree
+        File vcfHC
+    }
+
+    command <<<
+        bedtools subtract -a ~{vcfFree} -b ~{vcfHC} > ~{sample}.subtract.vcf
+    >>>
+
+    output {
+        File subtractVcf = "~{sample}.subtract.vcf"
     }
 
 }
@@ -297,9 +342,9 @@ task HaplotypeCaller {
         File? bed
     }
 
-    File reference = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa"
-    File ref_dict = "/home/novelbio/databases/hs37d5/hs37d5.chr.dict"
-    File ref_fai = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa.fai"
+    File reference = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta"
+    File ref_dict = "/home/novelbio/databases/b37/human_g1k_v37_decoy.dict"
+    File ref_fai = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.fai"
 
     command <<<
         gatk HaplotypeCaller \
@@ -312,12 +357,13 @@ task HaplotypeCaller {
     >>>
 
     output {
-        File combineGVCF = "~{sample}.g.vcf.gz"
-        File combineGVCFTbi = "~{sample}.g.vcf.gz.tbi"
+        File HCgVcf = "~{sample}.g.vcf.gz"
+        File HCgVcfTbi = "~{sample}.g.vcf.gz.tbi"
     }
 
     runtime {
         docker: "broadinstitute/gatk:4.2.6.1"
+        cpus: threads
     }
 }
 
@@ -332,9 +378,9 @@ task CombineGVCFsTwo {
         File p2GVCFTbi
     }
 
-    File reference = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa"
-    File ref_dict = "/home/novelbio/databases/hs37d5/hs37d5.chr.dict"
-    File ref_fai = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa.fai"
+    File reference = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta"
+    File ref_dict = "/home/novelbio/databases/b37/human_g1k_v37_decoy.dict"
+    File ref_fai = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.fai"
 
     command <<<
         gatk CombineGVCFs \
@@ -367,9 +413,9 @@ task CombineGVCFsThree {
         File p3GVCFTbi
     }
 
-    File reference = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa"
-    File ref_dict = "/home/novelbio/databases/hs37d5/hs37d5.chr.dict"
-    File ref_fai = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa.fai"
+    File reference = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta"
+    File ref_dict = "/home/novelbio/databases/b37/human_g1k_v37_decoy.dict"
+    File ref_fai = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.fai"
 
     command <<<
         gatk CombineGVCFs \
@@ -405,9 +451,9 @@ task CombineGVCFsFour {
         File p4GVCFTbi
     }
 
-    File reference = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa"
-    File ref_dict = "/home/novelbio/databases/hs37d5/hs37d5.chr.dict"
-    File ref_fai = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa.fai"
+    File reference = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta"
+    File ref_dict = "/home/novelbio/databases/b37/human_g1k_v37_decoy.dict"
+    File ref_fai = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.fai"
 
     command <<<
         gatk CombineGVCFs \
@@ -438,19 +484,19 @@ task GenotypeGVCFs {
         File gvcfTbi
     }
 
-    File reference = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa"
-    File ref_dict = "/home/novelbio/databases/hs37d5/hs37d5.chr.dict"
-    File ref_fai = "/home/novelbio/databases/hs37d5/hs37d5.chr.fa.fai"
+    File reference = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta"
+    File ref_dict = "/home/novelbio/databases/b37/human_g1k_v37_decoy.dict"
+    File ref_fai = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.fai"
 
     command <<<
         gatk GenotypeGVCFs \
             -R ~{reference} \
             -V ~{gvcf} \
-            -O ~{sample}.HaplotypeCaller.vcf
+            -O ~{sample}.HC.vcf
     >>>
 
     output {
-        File vcf = "~{sample}.HaplotypeCaller.vcf"
+        File vcf = "~{sample}.HC.vcf"
     }
 
     runtime {
@@ -470,14 +516,14 @@ task FilterHaplotypeCaller {
     command <<<
         gatk SelectVariants \
             -V ~{vcf} \
-            -O ~{sample}.indel.vcf \
+            -O ~{sample}.indel.vcf.gz \
             -select-type INDEL
         gatk SelectVariants \
             -V ~{vcf} \
-            -O ~{sample}.snp.vcf \
+            -O ~{sample}.snp.vcf.gz \
             -select-type SNP
         gatk VariantFiltration \
-            -V ~{sample}.snp.vcf \
+            -V ~{sample}.snp.vcf.gz \
             -filter "QD < 2.0" --filter-name "QD2" \
             -filter "FS > 60.0" --filter-name "FS60" \
             -filter "SOR > 3.0" --filter-name "SOR3" \
@@ -486,29 +532,29 @@ task FilterHaplotypeCaller {
             -filter "ReadPosRankSum < -8.0" --filter-name "ReadPosRankSum-8" \
             -filter "DP < ~{minDP}" --filter-name "DP~{minDP}" \
             -filter "QUAL < 30.0" --filter-name "QUAL30" \
-            -O ~{sample}.snp.filter.vcf
+            -O ~{sample}.snp.filter.vcf.gz
         gatk VariantFiltration \
-            -V ~{sample}.indel.vcf \
+            -V ~{sample}.indel.vcf.gz \
             -filter "QD < 2.0" --filter-name "QD2" \
             -filter "FS > 200.0" --filter-name "FS200" \
             -filter "SOR > 10.0" --filter-name "SOR10" \
             -filter "ReadPosRankSum < -20.0" --filter-name "ReadPosRankSum-20" \
             -filter "DP < ~{minDP}" --filter-name "DP~{minDP}" \
             -filter "QUAL < 30.0" --filter-name "QUAL30" \
-            -O ~{sample}.indel.filter.vcf
+            -O ~{sample}.indel.filter.vcf.gz
         gatk MergeVcfs \
-            -I ~{sample}.snp.filter.vcf \
-            -I ~{sample}.indel.filter.vcf \
-            -O ~{sample}.merge.vcf
+            -I ~{sample}.snp.filter.vcf.gz \
+            -I ~{sample}.indel.filter.vcf.gz \
+            -O ~{sample}.merge.vcf.gz
         gatk SelectVariants \
-            -V ~{sample}.merge.vcf \
-            -O ~{sample}.filtered.vcf \
+            -V ~{sample}.merge.vcf.gz \
+            -O ~{sample}.HC.filtered.vcf \
             -L ~{bed} \
             --exclude-filtered true
     >>>
 
     output {
-        File filterVcf = "~{sample}.filtered.vcf"
+        File filterVcf = "~{sample}.HC.filtered.vcf"
     }
 
     runtime {
