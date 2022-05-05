@@ -1,0 +1,9 @@
+{
+  "WESPipeSingle.sample": "String",
+  "WESPipeSingle.rawRead1": "File",
+  "WESPipeSingle.rawRead2": "File",
+  "WESPipeSingle.probe": "File",
+  "WESPipeSingle.bed": "File",
+  "WESPipeSingle.threads": "Int"
+}
+
