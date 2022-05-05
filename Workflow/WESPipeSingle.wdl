@@ -3,8 +3,15 @@ version 1.0
 # 20220426
 # 全外显子分析流程 单人样本
 
+# Test
+# import "../Task/QC.wdl" as qc
+# import "../Task/Mapping.wdl" as mapping
+# import "../Task/Mutation.wdl" as mutation
+# import "../Task/Annotation.wdl" as annotation
 import "QC.wdl" as qc
 import "Mapping.wdl" as mapping
+import "Mutation.wdl" as mutation
+import "Annotation.wdl" as annotation
 
 workflow WESPipeSingle {
     input {
@@ -26,7 +33,34 @@ workflow WESPipeSingle {
     
     # 质控报告
     call mapping.Bamdst as BamStat {input: sample=sample, bam=BQSR.realignBam, bai=BQSR.realignBamBai, bed=probe}
-    call QC.Gender as Gender {input: sample=sample, bam=BQSR.realignBam, bai=BQSR.realignBamBai}
-    call QC.YKQCGermline as YKQC {input: sample=sample, fastpJson=QC.jsonReport, bamdstDepth=BamStat.depthReport, bamdstCoverage=BamStat.coverageReport, gender=Gender.genderPredict}
+    call qc.Gender as Gender {input: sample=sample, bam=BQSR.realignBam, bai=BQSR.realignBamBai}
+    call qc.YKQCGermline as YKQC {input: sample=sample, fastpJson=QC.jsonReport, bamdstDepth=BamStat.depthReport, bamdstCoverage=BamStat.coverageReport, gender=Gender.genderPredict}
+
+    # 线粒体检测
+    call mutation.Mutect2MT as MT {input: sample=sample, bam=BQSR.realignBam, bai=BQSR.realignBamBai, threads=threads}
+    call mutation.FilterMutect2MT as MTFilter {input: sample=sample, vcf=MT.vcf, vcfIdx=MT.vcfIdx, vcfStats=MT.vcfStats}
+    call mutation.LeftAlignMutect2 as MTLeft {input: sample=sample, vcf=MTFilter.filterVcf}
+
+    # 变异检测
+    ## HC 流程
+    call mutation.HaplotypeCaller as HaplotypeCaller {input: sample=sample, bam=BQSR.realignBam, bai=BQSR.realignBamBai, threads=threads, bed=bed}
+    call mutation.GenotypeGVCFs as GenotypeGVCFs {input: sample=sample, gvcf=HaplotypeCaller.HCgVcf, gvcfTbi=HaplotypeCaller.HCgVcfTbi}
+    call mutation.FilterHaplotypeCaller as FilterHaplotypeCaller {input: sample=sample, vcf=GenotypeGVCFs.vcf, bed=bed, minDP=10}
+    call mutation.LeftAlignMutect2 as HCLeft {input: sample=sample, vcf=FilterHaplotypeCaller.filterVcf}
+    ## Freebayes 流程
+    call mutation.Freebayes as Freebayes {input: sample=sample, bam=BQSR.realignBam, bai=BQSR.realignBamBai, bed=bed}
+    call mutation.FilterFreebayes as FilterFreebayes {input: sample=sample, vcf=Freebayes.vcf, minDP=10, minAF=0.2}
+    call mutation.LeftAlignBcftools as FreebayesLeft {input: sample=sample, vcf=FilterFreebayes.filterVcf}
+    ## Freebayes HC差异提取
+    call mutation.FreeSubtractHC as FreeSubtractHC {input: sample=sample, vcfFree=FreebayesLeft.leftVcf, vcfHC=HCLeft.leftVcf}
+
+    # 注释
+    ## 线粒体注释
+    call annotation.MTAnnotation as MTAnnotation {input: sample=sample, vcf=MTLeft.leftVcf, threads=threads}
+    ## HC结果注释
+
+    ## 差异结果注释
+
+    
 
 }
