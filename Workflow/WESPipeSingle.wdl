@@ -55,12 +55,17 @@ workflow WESPipeSingle {
     call mutation.FreeSubtractHC as FreeSubtractHC {input: sample=sample, vcfFree=FreebayesLeft.leftVcf, vcfHC=HCLeft.leftVcf}
 
     # 注释
+    call annotation.GeneCoverage as GeneCoverage {input: sample=sample, regionGz=BamStat.regionReport, bed=bed}
     ## 线粒体注释
     call annotation.MTAnnotation as MTAnnotation {input: sample=sample, vcf=MTLeft.leftVcf, threads=threads}
     ## HC结果注释
-
+    call annotation.Snpeff as HCSnpeff {input: sample=sample, vcf=HCLeft.leftVcf}
+    call annotation.Annovar as HCAnnotation {input: sample=sample, vcf=HCSnpeff.annoVcf, threads=threads}
+    call annotation.AnnotationFix as HCAnnoFix {input: sample=sample, annoFile=HCAnnotation.annovarResults, geneCoverFile=GeneCoverage.geneCover}
     ## 差异结果注释
-
+    call annotation.Snpeff as SubSnpeff {input: sample=sample, vcf=FreeSubtractHC.subtractVcf}
+    call annotation.Annovar as SubAnnotation {input: sample=sample, vcf=SubSnpeff.annoVcf, threads=threads}
+    call annotation.AnnotationFix as SubAnnoFix {input: sample=sample, annoFile=SubAnnotation.annovarResults, geneCoverFile=GeneCoverage.geneCover}
     
 
 }
