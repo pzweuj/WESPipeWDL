@@ -112,3 +112,26 @@ task MTAnnotation {
 
 }
 
+# 注释结果整理
+task AnnotationFix {
+    input {
+        String sample
+        File annoFile
+        File? geneCoverFile
+    }
+
+    String fixScript = "/home/novelbio/pipeline/WESpipeWDL/Script/AnnoGermline.py"
+    String clinvarPath = "/slurm/databases/humandb/hg19_clinvarPathRegion.txt"
+
+    command <<<
+        head -n 1 ~{annoFile} | sed 's/$/&\\tClinvarPath/' > ~{sample}.anno.header
+        tail -n +2 ~{annoFile} | bedtools intersect -a - -b ~{clinvarPath} -c > ~{sample}.anno.sig
+        cat ~{sample}.anno.header ~{sample}.anno.sig > ~{sample}.anno.tmp
+        python3 ~{fixScript} -i ~{sample}.anno.tmp -o ~{sample}.anno.txt -t ~{sample} -gcov ~{geneCoverFile} -syno False
+    >>>
+
+    output {
+        File resultsFile = "~{sample}.anno.txt"
+    }
+
+}
