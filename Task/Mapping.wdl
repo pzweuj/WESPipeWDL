@@ -160,6 +160,7 @@ task Bamdst {
         File bamdstReport = "~{sample}.bamdst.txt"
         File coverageReport = "~{sample}_tmp/coverage.report"
         File depthReport = "~{sample}_tmp/depth.tsv.gz"
+        File regionReport = "~{sample}_tmp/region.tsv.gz"
     }
 
     runtime {
