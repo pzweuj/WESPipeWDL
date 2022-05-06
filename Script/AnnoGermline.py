@@ -317,7 +317,7 @@ def GeneCov(geneCoverFile):
     return geneCoverDict
 
 # 主流程
-def main(annovarResultsFile, resultsFile, refTranscriptFile, trioName, silent, omim, syno, pp2, geneCoverage):
+def main(annovarResultsFile, resultsFile, refTranscriptFile, trioName, silent, omim, syno, pp2, geneCoverage, lite, filterSymbol):
     annovarResults = open(annovarResultsFile, "r")
     results = open(resultsFile, "w")
 
@@ -339,6 +339,11 @@ def main(annovarResultsFile, resultsFile, refTranscriptFile, trioName, silent, o
         if not line.startswith("Chr\tStart"):
             # 切割snpeff结果，这里注释结果在第212列
             lineSplitList = SplitLine(line, 211)
+            
+            # lite模式，不进行基因分离
+            if lite == "True" or lite == "true":
+                lineSplitList = [line]
+            
             for l in lineSplitList:
                 lines = l.replace("\n", "").split("\t")
                 for i in range(len(lines)):
@@ -365,6 +370,18 @@ def main(annovarResultsFile, resultsFile, refTranscriptFile, trioName, silent, o
 
                 lineDict["SEAnnotation"] = s[1]
                 lineDict["Gene"] = s[3].replace("-CHR_END", "")
+
+                # 过滤MIR/LOC/LINC系列
+                if filterSymbol == "True" or filterSymbol == "true":
+                    if lineDict["Gene"].startswith("MIR"):
+                        continue
+                    elif lineDict["Gene"].startswith("LOC"):
+                        continue
+                    elif lineDict["Gene"].startswith("LINC"):
+                        continue
+                    else:
+                        pass
+
                 lineDict["Feature"] = s[4].replace("-CHR_END", "")
                 lineDict["Transcript"] = s[6]
                 lineDict["AffectedExon"] = s[8]
@@ -373,6 +390,15 @@ def main(annovarResultsFile, resultsFile, refTranscriptFile, trioName, silent, o
 
                 # 处理Consequence
                 lineDict = Consequence(lineDict, lineDict["SEAnnotation"])
+
+                # 处理ClinvarPathogenic
+                if "ClinvarPath" in lineDict.keys():
+                    if int(lineDict["ClinvarPath"]) > 0:
+                        lineDict["ClinvarPath"] = "Y"
+                    else:
+                        lineDict["ClinvarPath"] = "N"
+                else:
+                    lineDict["ClinvarPath"] = "-"
 
                 # 处理VAF
                 trioNames = trioName.split(",")
@@ -428,7 +454,7 @@ def main(annovarResultsFile, resultsFile, refTranscriptFile, trioName, silent, o
                         "Chr", "Start", "End", "Ref", "Alt", "Gene", "Type", "Transcript", "cHGVS", "pHGVS", "Consequence", "AffectedExon", "cytoBand", "avsnp150",
                         "Lower0.01", "Lower0.05", "AF", "AF_popmax", "AF_male", "AF_female", "AF_raw", "AF_eas", "AF_afr", "AF_sas", "AF_amr", "AF_nfe", "AF_fin", "AF_asj", "AF_oth", "non_topmed_AF_popmax", "non_neuro_AF_popmax", "non_cancer_AF_popmax", "controls_AF_popmax", "AF_exome", "AF_exome_eas", "1000g2015aug_all",
                         "1000g2015aug_eas", "ExAC_ALL", "ExAC_EAS", "esp6500siv2_all",
-                        "CLNDN", "CLNSIG", "InterVar_automated", "InterVar_sig", "M-CAP_pred", "REVEL_score", "SIFT_pred", "Polyphen2_HDIV_pred", "Polyphen2_HVAR_pred", "LRT_pred", "MutationTaster_pred", "MutationAssessor_pred", "FATHMM_pred", "PROVEAN_pred", "dbscSNV_ADA_SCORE", "dbscSNV_RF_SCORE", "SpliceAI",
+                        "CLNDN", "CLNSIG", "ClinvarPathHotRegion", "InterVar_automated", "InterVar_sig", "M-CAP_pred", "REVEL_score", "SIFT_pred", "Polyphen2_HDIV_pred", "Polyphen2_HVAR_pred", "LRT_pred", "MutationTaster_pred", "MutationAssessor_pred", "FATHMM_pred", "PROVEAN_pred", "dbscSNV_ADA_SCORE", "dbscSNV_RF_SCORE", "SpliceAI",
                         "MAPQ", "VcfInfo"
                     ]
                     if os.path.exists(geneCoverage):
@@ -480,7 +506,7 @@ def main(annovarResultsFile, resultsFile, refTranscriptFile, trioName, silent, o
                     lineDict["non_topmed_AF_popmax"], lineDict["non_neuro_AF_popmax"], lineDict["non_cancer_AF_popmax"],
                     lineDict["controls_AF_popmax"], lineDict["AF_exome"], lineDict["AF_exome_eas"], lineDict["1000g2015aug_all"], lineDict["1000g2015aug_eas"],
                     lineDict["ExAC_ALL"], lineDict["ExAC_EAS"], lineDict["esp6500siv2_all"],
-                    lineDict["CLNDN"], lineDict["CLNSIG"], lineDict["InterVar_automated"], lineDict["InterVar_sig"],
+                    lineDict["CLNDN"], lineDict["CLNSIG"], lineDict["ClinvarPath"], lineDict["InterVar_automated"], lineDict["InterVar_sig"],
                     lineDict["M-CAP_pred"], lineDict["REVEL_score"], lineDict["SIFT_pred"],
                     lineDict["Polyphen2_HDIV_pred"], lineDict["Polyphen2_HVAR_pred"], lineDict["LRT_pred"], lineDict["MutationTaster_pred"],
                     lineDict["MutationAssessor_pred"], lineDict["FATHMM_pred"], lineDict["PROVEAN_pred"], lineDict["dbscSNV_ADA_SCORE"],
@@ -536,11 +562,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="""
             AnnoGermline
+            在默认的-l False模式下，程序会对同一位置比对到不同基因的结果进行拆分，因此最终输出行数会大于vcf原结果行数。
 
             适用于snpeff+annovar注释后结果整理。
             其中annovar需要注释数据库为
                     refGene,cytoBand,avsnp150,gnomad211_genome,gnomad211_exome,1000g2015aug_all,1000g2015aug_eas,exac03,
                     esp6500siv2_all,clinvar_20220320,dbnsfp42a,dbscsnv11,intervar_20180118,SpliceAI
+
+            建议命令：
+            python3 AnnoGermline.py -i sample.hg19_multianno.txt -o sample.anno.txt -t sample
+            python3 AnnoGermline.py -i sample.hg19_multianno.txt -o sample.anno.txt -t sample -l True
+            python3 AnnoGermline.py -i sample.hg19_multianno.txt -o sample.anno.txt -t sample -gcov sample.region.txt -fs True
         
         """,
         prog="AnnoMT.py",
@@ -565,14 +597,18 @@ if __name__ == "__main__":
     parser.add_argument("-pp2", "--pp2", type=str,
         help="是否注释PP2基因，默认是", default="True")
     parser.add_argument("-gcov", "--gcov", type=str,
-        help="导入基因覆盖结果", default="False")    
+        help="导入基因覆盖结果", default="False")
+    parser.add_argument("-l", "--lite", type=str,
+        help="同一位置不进行多基因分割，默认否", default="False")
+    parser.add_argument("-fs", "--fs", type=str,
+        help="过滤miRNA、LOC、LINC系列基因，默认否", default="False")
     parser.add_argument("-s", "--silent", type=str,
         help="是否静默运行，默认是", default="True")
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()
     args = parser.parse_args()
-    main(annovarResultsFile=args.anno, resultsFile=args.output, refTranscriptFile=args.reftran, trioName=args.trio, silent=args.silent, omim=args.omim, syno=args.syno, pp2=args.pp2, geneCoverage=args.gcov)
+    main(annovarResultsFile=args.anno, resultsFile=args.output, refTranscriptFile=args.reftran, trioName=args.trio, silent=args.silent, omim=args.omim, syno=args.syno, pp2=args.pp2, geneCoverage=args.gcov, lite=args.lite, filterSymbol=args.fs)
 
 # end
         
