@@ -294,7 +294,7 @@ def Consequence(analysisDict, snpeffAnnotation):
             analysisDict["Consequence"] = "Frameshift_variant"
     elif "stop_gained" in snpeffAnnotation:
         analysisDict["Consequence"] = "Nonsense_substitution"
-        if analysisDict["pHGVS"] == "-":
+        if analysisDict["Type"] == "Deletion" or analysisDict["Type"] == "Insertion":
             analysisDict["Consequence"] = "Truncation_mutation"
     elif "stop_lost" in snpeffAnnotation:
         analysisDict["Consequence"] = "Elongation_mutation"
