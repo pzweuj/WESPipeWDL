@@ -5,6 +5,7 @@ version 1.0
 
 # bwa
 # https://github.com/lh3/bwa
+# 同时使用samblaster进行去重
 task Bwa {
     input {
         String sample
@@ -26,8 +27,8 @@ task Bwa {
     command <<<
         bwa mem -t ~{threads} \
             -R "@RG\tPL:illumina\tSM:~{sample}\tPU:YK\tID:~{sample}" \
-            -v 1 -M ~{reference} ~{cleanRead1} ~{cleanRead2} > ~{sample}.sam
-        sambamba view ~{sample}.sam -S -h -f bam -p -t ~{threads} -o ~{sample}.bam
+            -v 1 -M ~{reference} ~{cleanRead1} ~{cleanRead2} \
+            | samblaster -M | sambamba view /dev/stdin -S -h -f bam -t ~{threads} -o ~{sample}.bam
         mkdir ~{sample}_tmp
         sambamba sort \
             -t ~{threads} \
@@ -43,41 +44,41 @@ task Bwa {
     }
 
     runtime {
-        docker: "pzweuj/mapping:latest"
+        docker: "pzweuj/mapping:2022May"
         cpus: threads
     }
 }
 
 # Markduplicates
 # gatk
-task MarkDuplicates {
-    input {
-        String sample
-        File sortBam
-        File sortBamBai
-    }
+# task MarkDuplicates {
+#     input {
+#         String sample
+#         File sortBam
+#         File sortBamBai
+#     }
 
-    command <<<
-        mkdir ~{sample}_markdups_tmp
-        gatk MarkDuplicates \
-            -I ~{sortBam} \
-            -O ~{sample}.marked.bam \
-            -M ~{sample}.dups.txt \
-            --CREATE_INDEX true \
-            --TMP_DIR ~{sample}_markdups_tmp
-        mv ~{sample}.marked.bai ~{sample}.marked.bam.bai
-        rm -rf ~{sample}_markdups_tmp
-    >>>
+#     command <<<
+#         mkdir ~{sample}_markdups_tmp
+#         gatk MarkDuplicates \
+#             -I ~{sortBam} \
+#             -O ~{sample}.marked.bam \
+#             -M ~{sample}.dups.txt \
+#             --CREATE_INDEX true \
+#             --TMP_DIR ~{sample}_markdups_tmp
+#         mv ~{sample}.marked.bai ~{sample}.marked.bam.bai
+#         rm -rf ~{sample}_markdups_tmp
+#     >>>
 
-    output {
-        File markBam = "~{sample}.marked.bam"
-        File markBamBai = "~{sample}.marked.bam.bai"
-    }
+#     output {
+#         File markBam = "~{sample}.marked.bam"
+#         File markBamBai = "~{sample}.marked.bam.bai"
+#     }
 
-    runtime {
-        docker: "broadinstitute/gatk:4.2.6.1"
-    }
-}
+#     runtime {
+#         docker: "broadinstitute/gatk:4.2.6.1"
+#     }
+# }
 
 # BQSR
 task BQSR {
