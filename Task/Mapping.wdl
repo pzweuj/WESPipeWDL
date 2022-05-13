@@ -33,7 +33,7 @@ task Bwa {
         sambamba sort \
             -t ~{threads} \
             ~{sample}.bam \
-            -o ~{sample}.sort.bam -p \
+            -o ~{sample}.sort.bam \
             --tmpdir ~{sample}_tmp -m ~{memory}G
         rm ~{sample}.sam ~{sample}.bam*
     >>>
