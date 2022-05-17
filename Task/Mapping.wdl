@@ -28,14 +28,14 @@ task Bwa {
         bwa mem -t ~{threads} \
             -R "@RG\tPL:illumina\tSM:~{sample}\tPU:YK\tID:~{sample}" \
             -v 1 -M ~{reference} ~{cleanRead1} ~{cleanRead2} \
-            | samblaster -M | sambamba view /dev/stdin -S -h -f bam -t ~{threads} -o ~{sample}.bam
+            | sambamba view /dev/stdin -S -h -f bam -t ~{threads} -o ~{sample}.bam
         mkdir ~{sample}_tmp
         sambamba sort \
             -t ~{threads} \
             ~{sample}.bam \
             -o ~{sample}.sort.bam \
             --tmpdir ~{sample}_tmp -m ~{memory}G
-        rm ~{sample}.sam ~{sample}.bam*
+        rm ~{sample}.bam*
     >>>
 
     output {
@@ -49,36 +49,108 @@ task Bwa {
     }
 }
 
+# BWA and samblaster pipe
+task BwaMarkDup {
+    input {
+        String sample
+        File cleanRead1
+        File cleanRead2
+        Int threads
+    }
+
+    File reference = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta"
+    File ref_dict = "/home/novelbio/databases/b37/human_g1k_v37_decoy.dict"
+    File ref_amb = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.amb"
+    File ref_ann = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.ann"
+    File ref_bwt = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.bwt"
+    File ref_fai = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.fai"
+    File ref_pac = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.pac"
+    File ref_sa = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.sa"
+    Int memory = ceil(threads * 4)
+
+    command <<<
+        bwa mem -t ~{threads} \
+            -R "@RG\tPL:illumina\tSM:~{sample}\tPU:YK\tID:~{sample}" \
+            -v 1 -M ~{reference} ~{cleanRead1} ~{cleanRead2} \
+            | samblaster -M | sambamba view /dev/stdin -S -h -f bam -t ~{threads} -o ~{sample}.bam
+        mkdir ~{sample}_tmp
+        sambamba sort \
+            -t ~{threads} \
+            ~{sample}.bam \
+            -o ~{sample}.sort.bam \
+            --tmpdir ~{sample}_tmp -m ~{memory}G
+        rm ~{sample}.bam*
+    >>>
+
+    output {
+        File sortBam = "~{sample}.sort.bam"
+        File sortBamBai = "~{sample}.sort.bam.bai"
+    }
+
+    runtime {
+        docker: "pzweuj/mapping:2022May"
+        cpus: threads
+    }
+}
+
+# sambamba markdup
+task sambambaMarkDup {
+    input {
+        String sample
+        File sortBam
+        File sortBamBai
+        Int threads
+    }
+
+    command <<<
+        mkdir ~{sample}_markdups_tmp
+        sambamba markdup \
+            -t ~{threads} \
+            --tmpdir ~{sample}_markdups_tmp \
+            ~{sortBam} ~{sample}.marked.bam
+    >>>
+
+    output {
+        File markBam = "~{sample}.marked.bam"
+        File markBamBai = "~{sample}.marked.bam.bai"        
+    }
+
+    runtime {
+        docker: "pzweuj/mapping:2022May"
+        cpus: threads
+    }
+}
+
 # Markduplicates
 # gatk
-# task MarkDuplicates {
-#     input {
-#         String sample
-#         File sortBam
-#         File sortBamBai
-#     }
+task MarkDuplicates {
+    input {
+        String sample
+        File sortBam
+        File sortBamBai
+    }
 
-#     command <<<
-#         mkdir ~{sample}_markdups_tmp
-#         gatk MarkDuplicates \
-#             -I ~{sortBam} \
-#             -O ~{sample}.marked.bam \
-#             -M ~{sample}.dups.txt \
-#             --CREATE_INDEX true \
-#             --TMP_DIR ~{sample}_markdups_tmp
-#         mv ~{sample}.marked.bai ~{sample}.marked.bam.bai
-#         rm -rf ~{sample}_markdups_tmp
-#     >>>
+    command <<<
+        mkdir ~{sample}_markdups_tmp
+        gatk MarkDuplicates \
+            -I ~{sortBam} \
+            -O ~{sample}.marked.bam \
+            -M ~{sample}.dups.txt \
+            --CREATE_INDEX true \
+            --TMP_DIR ~{sample}_markdups_tmp
+        mv ~{sample}.marked.bai ~{sample}.marked.bam.bai
+        rm -rf ~{sample}_markdups_tmp
+    >>>
 
-#     output {
-#         File markBam = "~{sample}.marked.bam"
-#         File markBamBai = "~{sample}.marked.bam.bai"
-#     }
+    output {
+        File markBam = "~{sample}.marked.bam"
+        File markBamBai = "~{sample}.marked.bam.bai"
+    }
 
-#     runtime {
-#         docker: "broadinstitute/gatk:4.2.6.1"
-#     }
-# }
+    runtime {
+        docker: "broadinstitute/gatk:4.2.6.1"
+    }
+}
 
 # BQSR
 task BQSR {
