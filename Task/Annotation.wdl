@@ -121,10 +121,10 @@ task AnnotationFix {
     }
 
     String fixScript = "/home/novelbio/pipeline/WESpipeWDL/Script/AnnoGermline.py"
-    String clinvarPath = "/slurm/databases/humandb/hg19_clinvarPathRegion.txt"
+    String clinvarPath = "/slurm/databases/humandb/b37_clinvarPathRegion.txt"
 
     command <<<
-        head -n 1 ~{annoFile} | sed 's/$/&\\tClinvarPath/' > ~{sample}.anno.header
+        head -n 1 ~{annoFile} | sed 's/$/&\tClinvarPath/' > ~{sample}.anno.header
         tail -n +2 ~{annoFile} | bedtools intersect -a - -b ~{clinvarPath} -c > ~{sample}.anno.sig
         cat ~{sample}.anno.header ~{sample}.anno.sig > ~{sample}.anno.tmp
         python3 ~{fixScript} -i ~{sample}.anno.tmp -o ~{sample}.anno.txt -t ~{sample} -gcov ~{geneCoverFile} -syno False
@@ -135,3 +135,40 @@ task AnnotationFix {
     }
 
 }
+
+# VEP
+task VEPAnno {
+    input {
+        String sample
+        File vcf
+        Int threads
+    }
+
+    String vep_cache = "/ykrt/data/backup/databases/VEP_cache"
+    File reference = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta"
+    File refFai = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.fai"
+
+    command <<<
+        vep \
+            -i ~{vcf} \
+            -o ~{sample}.vep.vcf \
+            --offline \
+            --assembly GRCh37 \
+            --cache \
+            --dir_cache ~{vep_cache} \
+            --fasta ~{reference} \
+            --vcf \
+            --fork ~{threads}
+    >>>
+
+    output {
+        File vepVcf = "~{sample}.vep.vcf"
+    }
+
+    runtime {
+        cpus: threads
+    }
+
+}
+
+
