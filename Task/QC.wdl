@@ -77,4 +77,23 @@ task Gender {
 
 }
 
+# 亲缘校检
+# 基于plink2
+task KingShip {
+    input {
+        String sample
+        File vcf
+    }
 
+    String script = "/home/novelbio/pipeline/WESpipeWDL/Script/run_plink2.sh"
+
+    command <<<
+        mkdir ~{sample}_kingship
+        ~{script} -i ~{vcf} -o ~{sample}_kingship -p ~{sample}
+    >>>
+
+    output {
+        File kingResults = "~{sample}_kingship/~{sample}.kinship"
+    }
+
+}
