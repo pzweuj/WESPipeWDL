@@ -32,5 +32,30 @@ task ExpansionHunter {
 
 }
 
+# UPD analysis
+# 仅适用与父母子三人样本
+# vcf文件需包含人群频率AF信息，该信息储存于INFO的CSQ tag下，参考VEP注释结果
+# https://github.com/bjhall/upd
+task UPD {
+    input {
+        String proband
+        String father
+        String mother
+        File vcf
+    }
 
+    command <<<
+        upd --vcf ~{vcf} \
+            --proband ~{proband} \
+            --father ~{father} \
+            --mother ~{mother} \
+            --af-tag AF \
+            regions > ~{proband}.trio.upd.txt
+    >>>
+
+    output {
+        File updResults = "~{proband}.trio.upd.txt"
+    }
+
+}
 
