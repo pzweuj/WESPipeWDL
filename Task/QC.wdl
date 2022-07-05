@@ -46,12 +46,22 @@ task YKQCGermline {
         File bamdstDepth
         File bamdstCoverage
         File gender
+        File fold80
+        File insertsize
     }
 
-    File qcstat = "/home/novelbio/pipeline/WESpipeWDL/Script/qcstat_germline.py"
+    String qcstat = "/home/novelbio/pipeline/WESpipeWDL/Script/qcstat_germline.py"
 
     command <<<
-        python3 ~{qcstat} ~{sample} ~{fastpJson} ~{bamdstCoverage} ~{bamdstDepth} ~{gender} ~{sample}.QC.txt
+        python3 ~{qcstat} \
+            -i ~{sample} \
+            -o ~{sample}.QC.txt \
+            -j ~{fastpJson} \
+            -b ~{bamdstCoverage} \
+            -d ~{bamdstDepth} \
+            -g ~{gender} \
+            -f ~{fold80} \
+            -s ~{insertsize}
     >>>
 
     output {
@@ -97,3 +107,73 @@ task KingShip {
     }
 
 }
+
+# 插入片段大小
+task InsertSize {
+    input {
+        String sample
+        File bam
+        File bai
+    }
+
+    command <<<
+        gatk CollectInsertSizeMetrics \
+            -I ~{bam} \
+            -O ~{sample}.insertsize.txt \
+            -H ~{sample}.insertsize.pdf
+        cat ~{sample}.insertsize.txt | grep -A 1 MEDIAN_INSERT_SIZE | cut -f 1,6 > ~{sample}.insertsize.select.txt
+    >>>
+
+    output {
+        File insertSizeResults = "~{sample}.insertsize.txt"
+        File insertSizeSelect = "~{sample}.insertsize.select.txt"
+        File insertSizePDF = "~{sample}.insertsize.pdf"
+    }
+
+    runtime {
+        docker: "aperdriau/gatk4.2.0:latest"
+    }    
+
+}
+
+# HsMetrics
+task HsMetrics {
+    input {
+        String sample
+        File bam
+        File bai
+        File probe
+        File bed
+    }
+
+    File refDict = "/slurm/databases/b37/human_g1k_v37_decoy.dict"
+
+    command <<<
+        gatk BedToIntervalList \
+            -I ~{bed} \
+            -O b.interval_list \
+            -SD ~{refDict}
+        gatk BedToIntervalList \
+            -I ~{probe} \
+            -O p.interval_list \
+            -SD ~{refDict}
+        gatk CollectHsMetrics \
+            -BI p.interval_list \
+            -TI b.interval_list \
+            -I ~{bam} \
+            -O ~{sample}.hs.txt
+        cat ~{sample}.hs.txt | grep -A 1 FOLD_80_BASE_PENALTY | cut -f 45 > ~{sample}.fold80.txt
+    >>>
+
+    output {
+        File hsResults = "~{sample}.hs.txt"
+        File fold80Results = "~{sample}.fold80.txt"
+    }
+
+    runtime {
+        docker: "aperdriau/gatk4.2.0:latest"
+    }  
+
+}
+
+
