@@ -27,12 +27,24 @@ workflow WESPipeToBam {
     call qc.Fastp as QC {input: sample=sample, rawRead1=rawRead1, rawRead2=rawRead2, threads=threads}
 
     # 比对
-    call mapping.BwaMarkDup as Mapping {input: sample=sample, cleanRead1=QC.cleanRead1, cleanRead2=QC.cleanRead2, threads=threads}
-    # call mapping.MarkDuplicates as MarkDup {input: sample=sample, sortBam=Mapping.sortBam, sortBamBai=Mapping.sortBamBai}
-    call mapping.BQSR as BQSR {input: sample=sample, bam=Mapping.sortBam, bai=Mapping.sortBamBai}
+    call mapping.Bwa as Mapping {input: sample=sample, cleanRead1=QC.cleanRead1, cleanRead2=QC.cleanRead2, threads=threads}
+    call mapping.MarkDuplicates as MarkDup {input: sample=sample, sortBam=Mapping.sortBam, sortBamBai=Mapping.sortBamBai}
+    call mapping.BQSR as BQSR {input: sample=sample, bam=MarkDup.markBam, bai=MarkDup.markBamBai}
     
     # 质控报告
     call mapping.Bamdst as BamStat {input: sample=sample, bam=BQSR.realignBam, bai=BQSR.realignBamBai, bed=probe}
     call qc.Gender as Gender {input: sample=sample, bam=BQSR.realignBam, bai=BQSR.realignBamBai}
-    call qc.YKQCGermline as YKQC {input: sample=sample, fastpJson=QC.jsonReport, bamdstDepth=BamStat.depthReport, bamdstCoverage=BamStat.coverageReport, gender=Gender.genderPredict}
+    call qc.InsertSize as InsertSize {input: sample=sample, bam=BQSR.realignBam, bai=BQSR.realignBamBai}
+    call qc.HsMetrics as HsMetrics {input: sample=sample, bam=BQSR.realignBam, bai=BQSR.realignBamBai, probe=probe, bed=bed}
+    call qc.YKQCGermline as YKQC {
+        input:
+            sample=sample,
+            fastpJson=QC.jsonReport,
+            bamdstDepth=BamStat.depthReport,
+            bamdstCoverage=BamStat.coverageReport,
+            gender=Gender.genderPredict,
+            fold80=HsMetrics.fold80Results,
+            insertsize=InsertSize.insertSizeSelect
+    }
+
 }
