@@ -47,7 +47,7 @@ workflow WESToAnno {
     call annotation.GeneCoverage as GeneCoverage {input: sample=sample, regionGz=BamStat.regionReport, bed=bed}
     ## HC结果注释
     call annotation.Snpeff as HCSnpeff {input: sample=sample, vcf=HCLeft.leftVcf}
-    call annotation.Annovar as HCAnnotation {input: sample=sample, vcf=HCSnpeff.annoVcf, threads=threads}
+    call annotation.Annovar as HCAnnotation {input: sample=sample, vcf=HCSnpeff.annoVcf}
     call annotation.AnnotationFix as HCAnnoFix {input: sample=sample, annoFile=HCAnnotation.annovarResults, geneCoverFile=GeneCoverage.geneCover} 
 
 }
