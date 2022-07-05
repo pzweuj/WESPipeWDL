@@ -29,7 +29,6 @@ task Annovar {
     input {
         String sample
         File vcf
-        Int threads
     }
 
     String humandb = "/home/novelbio/databases/humandb"
@@ -43,15 +42,11 @@ task Annovar {
             -out ~{sample} -remove \
             -protocol refGene,cytoBand,avsnp150,gnomad211_genome,gnomad211_exome,1000g2015aug_all,1000g2015aug_eas,exac03,esp6500siv2_all,clinvar_20220320,dbnsfp42a,dbscsnv11,intervar_20180118,SpliceAI \
             -operation g,r,f,f,f,f,f,f,f,f,f,f,f,f \
-            -nastring - -thread ~{threads} -otherinfo
+            -nastring - -otherinfo
     >>>
 
     output {
         File annovarResults = "~{sample}.hg19_multianno.txt"
-    }
-
-    runtime {
-        cpus: threads
     }
 
 }
@@ -82,7 +77,6 @@ task MTAnnotation {
     input {
         String sample
         File vcf
-        Int threads
     }
 
     String SNPEFF = "/home/novelbio/software/snpEff-5.0d/snpEff.jar"
@@ -98,16 +92,12 @@ task MTAnnotation {
             -buildver hg19 -out ~{sample} -remove \
             -protocol refGene,avsnp150,clinvar_20220227,mitomapB37 \
             -operation g,f,f,f \
-            -nastring - -thread ~{threads} -otherinfo
+            -nastring - -otherinfo
         python3 ~{fixScript} -i ~{sample}.hg19_multianno.txt -o ~{sample}.MT.anno.txt -t ~{sample}
     >>>
 
     output {
         File mtAnno = "~{sample}.MT.anno.txt"
-    }
-
-    runtime {
-        cpus: threads
     }
 
 }
@@ -144,21 +134,33 @@ task VEPAnno {
         Int threads
     }
 
-    String vep_cache = "/ykrt/data/backup/databases/VEP_cache"
+    String vep_cache = "/ykrt/data/backup/databases/vep_data"
     File reference = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta"
     File refFai = "/home/novelbio/databases/b37/human_g1k_v37_decoy.fasta.fai"
 
     command <<<
+        plugins_dir=~{vep_cache}/Plugins
+        plu_data_dir=~{vep_cache}/Plu_data
+        dbnsfp_str="CADD_phred,SIFT_pred,Polyphen2_HDIV_pred,LRT_pred,MutationTaster_pred,MutationAssessor_pred,FATHMM_pred,PROVEAN_pred,M-CAP_pred,REVEL_score"
+        dbnsfp_str=${dbnsfp_str}",clinvar_clnsig"
+        fields_str="Uploaded_variation,Location,REF_ALLELE,Allele,Gene,VARIANT_CLASS,CANONICAL,HGVSc,HGVSp,Consequence,EXON,BIOTYPE"
+        fields_str=${fields_str}",Existing_variation,gnomAD_EAS_AF,AF,EAS_AF,"
+        fields_str=${fields_str}${dbnsfp_str}",ada_score,rf_score,SpliceAI_pred"
+
         vep \
             -i ~{vcf} \
             -o ~{sample}.vep.vcf \
-            --offline \
-            --assembly GRCh37 \
-            --cache \
+            --offline --cache \
+            --format vcf --refseq --fork ~{threads} \
+            --force_overwrite \
             --dir_cache ~{vep_cache} \
-            --fasta ~{reference} \
-            --vcf \
-            --fork ~{threads}
+            --dir_plugins ${plugins_dir} \
+            --plugin dbNSFP,${plu_data_dir}/dbNSFP4.3a_grch37.gz,${dbnsfp_str} \
+            --plugin dbscSNV,${plu_data_dir}/dbscSNV1.1_GRCh37.txt.gz \
+            --plugin SpliceAI,snv=${plu_data_dir}/spliceai_scores.raw.snv.hg19.vcf.gz,indel=${plu_data_dir}/spliceai_scores.raw.indel.hg19.vcf.gz,cutoff=0.5 \
+            --fasta ~{reference} --assembly GRCh37 \
+            --shift_3prime 1 --no_escape --show_ref_allele --check_existing \
+            --exclude_predicted --canonical --vcf --fields ${fields_str}
     >>>
 
     output {
