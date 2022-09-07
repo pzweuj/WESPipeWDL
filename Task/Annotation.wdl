@@ -40,7 +40,7 @@ task Annovar {
         table_annovar.pl ~{sample}.avinput \
             ~{humandb} -buildver hg19 \
             -out ~{sample} -remove \
-            -protocol refGene,cytoBand,avsnp150,gnomad211_genome,gnomad211_exome,1000g2015aug_all,1000g2015aug_eas,exac03,esp6500siv2_all,clinvar_20220320,dbnsfp42a,dbscsnv11,intervar_20180118,SpliceAI \
+            -protocol refGene,cytoBand,avsnp150,gnomad211_genome,gnomad211_exome,1000g2015aug_all,1000g2015aug_eas,exac03,esp6500siv2_all,clinvar_20220812,dbnsfp42a,dbscsnv11,intervar_20180118,SpliceAI \
             -operation g,r,f,f,f,f,f,f,f,f,f,f,f,f \
             -nastring - -otherinfo
     >>>
@@ -90,7 +90,7 @@ task MTAnnotation {
         table_annovar.pl ~{sample}.avinput \
             /home/novelbio/databases/humandb \
             -buildver hg19 -out ~{sample} -remove \
-            -protocol refGene,avsnp150,clinvar_20220227,mitomapB37 \
+            -protocol refGene,avsnp150,clinvar_20220812,mitomapB37 \
             -operation g,f,f,f \
             -nastring - -otherinfo
         python3 ~{fixScript} -i ~{sample}.hg19_multianno.txt -o ~{sample}.MT.anno.txt -t ~{sample}
