@@ -173,4 +173,34 @@ task VEPAnno {
 
 }
 
+# annotSV
+# https://github.com/lgmgeo/AnnotSV
+task AnnotSV {
+    input {
+        String sample
+        File cnvResult
+    }
 
+    String annotSV = "/yk/apps/biosoft/AnnotSV/bin/AnnotSV"
+    String annotSVDir = "/yk/apps/biosoft/AnnotSV"
+    String script = "/home/novelbio/pipeline/WESpipeWDL/Script/annotsv_fix.py"
+
+    command <<<
+        cat ~{cnvResult} | awk '{print $1"\t"$2"\t"$3"\t"$5"\t"$4}' | sed 's/gain/DUP/' | sed 's/loss/DEL/' > ~{sample}.cnv.bed
+        export ANNOTSV=~{annotSVDir}
+        ~{annotSV} \
+            -SVinputFile ~{sample}.cnv.bed \
+            -outputFile ~{sample}.annotsv.tsv \
+            -outputDir . \
+            -svtBEDcol 4 \
+            -annotationMode full \
+            -genomeBuild GRCh37 \
+            -SVminSize 5000
+        python3 ~{script} ~{sample}.annotsv.tsv ~{sample}.annotsv.txt
+    >>>
+
+    output {
+        File annoResult = "~{sample}.annotsv.txt"
+    }
+
+}

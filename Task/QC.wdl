@@ -69,6 +69,35 @@ task YKQCGermline {
     }
 }
 
+# WGS QC整理
+task YKQCWGS {
+    input {
+        String sample
+        File fastpJson
+        File covFile
+        File dupFile
+        File gender
+        File insertsize
+    }
+
+    String qcstat = "/home/novelbio/pipeline/WESpipeWDL/Script/qcstat_wgs.py"
+
+    command <<<
+        python3 ~{qcstat} \
+            -i ~{sample} \
+            -o ~{sample}.QC.txt \
+            -j ~{fastpJson} \
+            -c ~{covFile} \
+            -d ~{dupFile} \
+            -g ~{gender} \
+            -s ~{insertsize}
+    >>>
+
+    output {
+        File YKQCReport = "~{sample}.QC.txt"
+    }
+}
+
 # 性别验证
 task Gender {
     input {
@@ -173,6 +202,27 @@ task HsMetrics {
     runtime {
         docker: "aperdriau/gatk4.2.0:latest"
     }  
+
+}
+
+# 统计WGS
+task Genomecov {
+    input {
+        String sample
+        File bam
+        File bai
+    }
+
+    String script = "/slurm/pipeline/WESpipeWDL/Script/getChrStat.py"
+
+    command <<<
+        bedtools genomecov -ibam ~{bam} -bga | gzip - > ~{sample}.cov.gz
+        python3 ~{script} ~{sample}.cov.gz ~{sample}.chr.txt
+    >>>
+
+    output {
+        File covFile = "~{sample}.chr.txt"
+    }
 
 }
 

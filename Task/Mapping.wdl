@@ -152,6 +152,62 @@ task MarkDuplicates {
     }
 }
 
+# rm dups
+task MarkDuplicatesRM {
+    input {
+        String sample
+        File sortBam
+        File sortBamBai
+    }
+
+    command <<<
+        mkdir ~{sample}_markdups_tmp
+        gatk MarkDuplicates \
+            -I ~{sortBam} \
+            -O ~{sample}.rmdup.bam \
+            -M ~{sample}.dups.txt \
+            --CREATE_INDEX true \
+            --TMP_DIR ~{sample}_markdups_tmp \
+            --REMOVE_DUPLICATES true
+        mv ~{sample}.rmdup.bai ~{sample}.rmdup.bam.bai
+        rm -rf ~{sample}_markdups_tmp
+    >>>
+
+    output {
+        File rmDupBam = "~{sample}.rmdup.bam"
+        File rmDupBamBai = "~{sample}.rmdup.bam.bai"
+        File dupResult = "~{sample}.dups.txt"
+    }
+
+    runtime {
+        docker: "broadinstitute/gatk:4.2.6.1"
+    }
+}
+
+# rm antitarget region from wgs bam
+# 直接使用基线样本进行过滤可能更好
+task RmAntitarget {
+    input {
+        String sample
+        File bam
+        File bai
+    }
+
+    File targetBed = "/slurm/databases/b37/bed/b37.wgs.access.bed"
+
+    command <<<
+        bedtools intersect -a ~{bam} -b ~{targetBed} > ~{sample}.access.bam
+        samtools index ~{sample}.access.bam
+    >>>
+
+    output {
+        File accessBam = "~{sample}.access.bam"
+        File accessBamBai = "~{sample}.access.bam.bai"
+    }
+
+}
+
+
 # BQSR
 task BQSR {
     input {
