@@ -7,10 +7,12 @@ version 1.0
 # import "../Task/QC.wdl" as qc
 # import "../Task/Mapping.wdl" as mapping
 # import "../Task/Mutation.wdl" as mutation
+# import "../Task/CNV.wdl" as cnv
 # import "../Task/Annotation.wdl" as annotation
 import "QC.wdl" as qc
 import "Mapping.wdl" as mapping
 import "Mutation.wdl" as mutation
+import "CNV.wdl" as cnv
 import "Annotation.wdl" as annotation
 
 workflow WESToAnno {
@@ -48,6 +50,11 @@ workflow WESToAnno {
     ## HC结果注释
     call annotation.Snpeff as HCSnpeff {input: sample=sample, vcf=HCLeft.leftVcf}
     call annotation.Annovar as HCAnnotation {input: sample=sample, vcf=HCSnpeff.annoVcf}
-    call annotation.AnnotationFix as HCAnnoFix {input: sample=sample, annoFile=HCAnnotation.annovarResults, geneCoverFile=GeneCoverage.geneCover} 
+    call annotation.AnnotationFix as HCAnnoFix {input: sample=sample, annoFile=HCAnnotation.annovarResults, geneCoverFile=GeneCoverage.geneCover}
+
+    # CNV
+    File cnvBaseline = "/slurm/database/b37/baseline/IDT_FuJun.Exomedepth.baseline.rdata"
+    call cnv.ExomeDepth as ExomeDepth {input: sample=sample, bam=BQSR.realignBam, bai=BQSR.realignBamBai, bed=bed, reference=cnvBaseline}
+    call annotation.AnnotSVEx as AnnotSV {input: sample=sample, cnvResult=ExomeDepth.resultFile}
 
 }
