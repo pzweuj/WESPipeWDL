@@ -23,6 +23,10 @@ table_annovar.pl avinput \\
         intervar_20180118,SpliceAI \\
     -operation g,r,f,f,f,f,f,f,f,f,f,f,f,f \\
     -nastring - -thread 8 -otherinfo
+
+head -n 1 ~{annoFile} | sed 's/$/&\tClinvarPath/' > ~{sample}.anno.header
+tail -n +2 ~{annoFile} | bedtools intersect -a - -b ~{clinvarPath} -c > ~{sample}.anno.sig
+cat ~{sample}.anno.header ~{sample}.anno.sig > ~{sample}.anno.tmp
 """
 
 import os
@@ -101,6 +105,26 @@ def checkAF(afList, freq):
     else:
         return "T"
 
+# 过滤内含子
+def filterIntron(consequence, af, clinvar):
+    cList = ["risk_factor", "Affects", "drug_response", "pathogenic", "Pathogenic", "sensitivity"]
+    f = True
+    if consequence == "Other":
+        if af == "-":
+            af = 0
+        else:
+            af = float(af)
+        ###################
+        if af >= 0.05:
+            for c in cList:
+                if c in clinvar:
+                    f = False
+        else:
+            f = False
+    else:
+        f = False
+    return f
+            
 # InterVar合并
 def MergeInterVar(analysisDict):
     analysisDict["InterVar_sig"] = "PVS1=" + analysisDict["PVS1"] + ";" + \
@@ -440,6 +464,10 @@ def main(annovarResultsFile, resultsFile, refTranscriptFile, trioName, silent, o
                         if lineDict["Consequence"] == "Synonymous_substitution":
                             if SynonymousFilter(max(DPList), lineDict["AF_exome"], lineDict["AF_exome_eas"], lineDict["CLNSIG"]):
                                 continue
+                    
+                    # 过滤内含子
+                    if filterIntron(lineDict["Consequence"], lineDict["AF"], lineDict["CLNSIG"]):
+                        continue
 
                 except:
                     continue
@@ -568,11 +596,16 @@ if __name__ == "__main__":
             其中annovar需要注释数据库为
                     refGene,cytoBand,avsnp150,gnomad211_genome,gnomad211_exome,1000g2015aug_all,1000g2015aug_eas,exac03,
                     esp6500siv2_all,clinvar_20220320,dbnsfp42a,dbscsnv11,intervar_20180118,SpliceAI
+            
+            需要使用bedtools补充与clinvar致病区域的覆盖区
+            head -n 1 sample.hg19_multianno.txt | sed 's/$/&\\tClinvarPath/' > sample.anno.header
+            tail -n +2 sample.hg19_multianno.txt | bedtools intersect -a - -b b37_clinvarPathRegion.txt -c > sample.anno.sig
+            cat sample.anno.header sample.anno.sig > sample.anno.tmp
 
             建议命令：
-            python3 AnnoGermline.py -i sample.hg19_multianno.txt -o sample.anno.txt -t sample
-            python3 AnnoGermline.py -i sample.hg19_multianno.txt -o sample.anno.txt -t sample -l True
-            python3 AnnoGermline.py -i sample.hg19_multianno.txt -o sample.anno.txt -t sample -gcov sample.region.txt -fs True
+            python3 AnnoGermline.py -i sample.anno.tmp -o sample.anno.txt -t sample
+            python3 AnnoGermline.py -i sample.anno.tmp -o sample.anno.txt -t sample -l True
+            python3 AnnoGermline.py -i sample.anno.tmp -o sample.anno.txt -t sample -gcov sample.region.txt -fs True
         
         """,
         prog="AnnoMT.py",
