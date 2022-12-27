@@ -117,4 +117,26 @@ task FreecPlot {
 
 }
 
+# exomeDepth分析
+task ExomeDepth {
+    input {
+        String sample
+        File bam
+        File bai
+        File bed
+        File reference
+    }
+
+    command <<<
+        exomeDepthPipe.py single -i ~{bam} -b ~{bed} -o ~{sample}.exomedepth.txt -r ~{reference}    
+    >>>
+
+    output {
+        File resultFile = "~{sample}.exomedepth.txt"
+    }
+
+    runtime {
+        docker: "pzweuj/exomedepth:1.1.16"
+    }
+}
 
