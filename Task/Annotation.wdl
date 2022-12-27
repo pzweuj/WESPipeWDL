@@ -204,3 +204,38 @@ task AnnotSV {
     }
 
 }
+
+# AnnotSv 用于exomedepth结果的版本
+task AnnotSVEx {
+    input {
+        String sample
+        File cnvResult
+    }
+
+    String annotSV = "/yk/apps/biosoft/AnnotSV/bin/AnnotSV"
+    String annotSVDir = "/yk/apps/biosoft/AnnotSV"
+    String script = "/home/novelbio/pipeline/WESpipeWDL/Script/annotsv_fix_exomedepth.py"
+
+    command <<<
+        cat ~{cnvResult} \
+            | awk '{print $7"\t"$5"\t"$6"\t"$3"\t"$9"\t"$10"\t"$11"\t"$12}' \
+            | sed 's/duplication/DUP/' \
+            | sed 's/deletion/DEL/' \
+            | sed 's/chromosome/#chromosome/' > ~{sample}.fix.bed
+        export ANNOTSV=~{annotSVDir}
+        ~{annotSV} \
+            -SVinputFile ~{sample}.fix.bed \
+            -outputFile ~{sample}.annotsv.tsv \
+            -outputDir . \
+            -svtBEDcol 4 \
+            -annotationMode full \
+            -genomeBuild GRCh37 \
+            -SVminSize 5000
+        python3 ~{script} ~{sample}.annotsv.tsv ~{sample}.annotsv.txt        
+    >>>    
+
+    output {
+        File annoResult = "~{sample}.annotsv.txt"
+    }
+}
+
