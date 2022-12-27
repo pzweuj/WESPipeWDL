@@ -5,7 +5,7 @@
 """
 SampleID|rawReads|rawBases|cleanReads|cleanBases|duplicatesRate|cleanQ20|cleanQ30|cleanGC
 |mappedReads|mappedBases|mappedRate|targetReads|targetBases|targetRate|depth|depthRmdups|Uniformity|Fold80
-|1XCov|10XCov|20XCov|50XCov|medianInsertSize|meanInsertSize|PredictGender
+|1XCov|10XCov|20XCov|50XCov|1XCov_rmdup|10XCov_rmdup|20XCov_rmdup|50XCov_rmdup|medianInsertSize|meanInsertSize|PredictGender
 """
 
 import sys
@@ -74,10 +74,8 @@ def uniformityAnalysis(depthFile, averageDepth):
     depthReport = gzip.open(depthFile, "rt")
     targetLength = 0
     uniform = 0
-    C1 = 0
-    C10 = 0
-    C20 = 0
-    C50 = 0
+    C1 = C10 = C20 = C50 = 0
+    C1_rm = C10_rm = C20_rm = C50_rm = 0
     targetDepthBases = 0
     targetRmDepthBases = 0
     for line in depthReport:
@@ -107,12 +105,38 @@ def uniformityAnalysis(depthFile, averageDepth):
                 C1 += 1
             elif rawDepth >= 1:
                 C1 += 1
+            else:
+                pass
+
+            # 去重
+            if rmDepth >= 50:
+                C50_rm += 1
+                C20_rm += 1
+                C10_rm += 1
+                C1_rm += 1
+            elif rmDepth >= 20:
+                C20_rm += 1
+                C10_rm += 1
+                C1_rm += 1
+            elif rmDepth >= 10:
+                C10_rm += 1
+                C1_rm += 1
+            elif rmDepth >= 1:
+                C1_rm += 1
+            else:
+                pass
+
+
     uniformity = "%.2f" % (uniform / targetLength * 100) + "%"
     cover50 = "%.2f" % (C50 / targetLength * 100) + "%"
     cover20 = "%.2f" % (C20 / targetLength * 100) + "%"
     cover10 = "%.2f" % (C10 / targetLength * 100) + "%"
     cover1 = "%.2f" % (C1 / targetLength * 100) + "%"
-    return [uniformity, cover1, cover10, cover20, cover50]
+    cover50_rm = "%.2f" % (C50_rm / targetLength * 100) + "%"
+    cover20_rm = "%.2f" % (C20_rm / targetLength * 100) + "%"
+    cover10_rm = "%.2f" % (C10_rm / targetLength * 100) + "%"
+    cover1_rm = "%.2f" % (C1_rm / targetLength * 100) + "%"
+    return [uniformity, cover1, cover10, cover20, cover50, cover1_rm, cover10_rm, cover20_rm, cover50_rm]
 
 # 性别校检
 def genderAnalysis(genderFile):
@@ -177,7 +201,7 @@ def insertSizeAnalysis(insertSizeFile):
 def main(sample, fastpJsonReport, bamdstReport, depthFile, genderFile, fold80File, insertSizeFile, outputResults):
     rawReads, rawBases, cleanReads, cleanBases, cleanQ20, cleanQ30, cleanGC, readLength = jsonAnalysis(fastpJsonReport)
     duplicationRate, mappedReads, mappedBases, mappedRate, targetReads, targetBases, targetRate, averageDepth, averageRmDepth = coverageAnalysis(bamdstReport, cleanBases, readLength)
-    uniformity, cover1, cover10, cover20, cover50 = uniformityAnalysis(depthFile, averageDepth)
+    uniformity, cover1, cover10, cover20, cover50, cover1_rm, cover10_rm, cover20_rm, cover50_rm = uniformityAnalysis(depthFile, averageDepth)
     gender = genderAnalysis(genderFile)
     fold80 = fold80Analysis(fold80File)
     medianInsertSize, meanInsertSize = insertSizeAnalysis(insertSizeFile)
@@ -189,11 +213,11 @@ def main(sample, fastpJsonReport, bamdstReport, depthFile, genderFile, fold80Fil
         str(mappedReads), str(mappedBases), mappedRate,
         str(targetReads), str(targetBases), targetRate,
         str(averageDepth), str(averageRmDepth), uniformity, fold80,
-        cover1, cover10, cover20, cover50, medianInsertSize, meanInsertSize, gender
+        cover1, cover10, cover20, cover50, cover1_rm, cover10_rm, cover20_rm, cover50_rm, medianInsertSize, meanInsertSize, gender
     ]
     outputFile.write("sampleID\trawReads\trawBases\tcleanReads\tcleanBases\tduplicatesRate\tcleanQ20\tcleanQ30\tcleanGC"\
         "\tmappedReads\tmappedBases\tmappedRate\ttargetReads\ttargetBases\ttargetRate\tdepth\tdepthRmdups\tUniformity\tFold80"\
-        "\t1XCov\t10Xcov\t20XCov\t50XCov\tmedianInsertSize\tmeanInsertSize\tPredictGender\n")
+        "\t1XCov\t10Xcov\t20XCov\t50XCov\t1XCov_rm\t10XCov_rm\t20XCov_rm\t50XCov_rm\tmedianInsertSize\tmeanInsertSize\tPredictGender\n")
     outputFile.write("\t".join(output) + "\n")
     outputFile.close()
 
