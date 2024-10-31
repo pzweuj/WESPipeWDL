@@ -4,3 +4,8 @@
 
 ## 路线
 
+fastp + bwa + samtools + markduplicates -> bam
+deepvariant + vep -> snp/indel
+mutect2 + vep -> mt
+cnvkit -> cnv
+
