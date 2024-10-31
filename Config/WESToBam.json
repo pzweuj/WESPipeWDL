@@ -1,9 +1,0 @@
-{
-  "WESPipeToBam.sample": "String",
-  "WESPipeToBam.rawRead1": "File",
-  "WESPipeToBam.rawRead2": "File",
-  "WESPipeToBam.threads": "Int",
-  "WESPipeToBam.bed": "File",
-  "WESPipeToBam.probe": "File"
-}
-

@@ -1,8 +1,0 @@
-{
-  "CNVSeqPipe.sample": "String",
-  "CNVSeqPipe.sex": "String",
-  "CNVSeqPipe.rawRead1": "File",
-  "CNVSeqPipe.rawRead2": "File",
-  "CNVSeqPipe.threads": "Int"
-}
-
