@@ -2,12 +2,29 @@
 ## 项目介绍
 使用WDL流程语言，从零开始搭建一套普适性的遗传全外显子分析流程。
 
-使用GRCh38！
+目标：
 
-## 路线
+1、一套包含SNP、InDel、CNV、SV、TE、UPD的全外显子分析流程；
 
-fastp + bwa + samtools + markduplicates -> bam
-deepvariant + vep -> snp/indel
-mutect2 + vep -> mt
-cnvkit -> cnv
+2、包含家系分析、单人分析；
+
+3、从原始数据到结果报表；
+
+4、包含致病位点预测。
+
+
+
+## 基本推进路线
+
+1、全流程使用GRCh38作为示例，不会考虑GRCh37的兼容性；
+
+2、全流程的分步拆解WIKI；
+
+3、不会包含软件的安装教程；
+
+4、不会包含docker、singularity的使用教程；
+
+5、不会包含Cromwell引擎的单机模式和服务器模式的配置教程。
+
+
 
